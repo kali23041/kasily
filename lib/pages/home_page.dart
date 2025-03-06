@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui';
+import 'package:flutter/services.dart'; // Import for haptic feedback
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -16,6 +17,8 @@ class _HomePageState extends State<HomePage> {
   
   // Add a ScrollController for the project carousel
   late ScrollController _projectScrollController;
+  bool _isScrolling = false;
+  int _lastSelectedIndex = 0;
   
   final List<Map<String, dynamic>> _projects = [
     {
@@ -111,6 +114,7 @@ class _HomePageState extends State<HomePage> {
     
     // Initialize the scroll controller
     _projectScrollController = ScrollController();
+    _lastSelectedIndex = _selectedProjectIndex;
     
     // Add a listener to detect scroll changes
     _projectScrollController.addListener(_onProjectScroll);
@@ -136,12 +140,34 @@ class _HomePageState extends State<HomePage> {
     final int index = (offset / itemWidth).round();
     
     // Ensure the index is within bounds
-    if (index >= 0 && index < _projects.length && index != _selectedProjectIndex) {
-      setState(() {
-        _selectedProjectIndex = index;
-        _completionPercentage = _projects[index]['progress'];
-      });
+    if (index >= 0 && index < _projects.length) {
+      // Only update if the index has changed
+      if (index != _selectedProjectIndex) {
+        setState(() {
+          _selectedProjectIndex = index;
+          _completionPercentage = _projects[index]['progress'];
+          _isScrolling = true;
+        });
+      }
     }
+    
+    // If the scroll controller is not actively being dragged, check if we need to trigger haptic
+    if (!_projectScrollController.position.isScrollingNotifier.value) {
+      if (_isScrolling) {
+        _isScrolling = false;
+        
+        // Only trigger haptic if we've settled on a new index
+        if (_lastSelectedIndex != _selectedProjectIndex) {
+          _lastSelectedIndex = _selectedProjectIndex;
+          _triggerSubtleHaptic();
+        }
+      }
+    }
+  }
+  
+  // Custom method to trigger the most subtle haptic possible
+  void _triggerSubtleHaptic() {
+    HapticFeedback.selectionClick();
   }
 
   @override
@@ -227,179 +253,198 @@ class _HomePageState extends State<HomePage> {
       child: ScrollConfiguration(
         // Remove the glow effect
         behavior: ScrollConfiguration.of(context).copyWith(
-          overscroll: false,  // Disables the glow effect
-          physics: const BouncingScrollPhysics(),  // Optional: use bouncing physics instead
+          overscroll: false,
+          physics: const BouncingScrollPhysics(),
         ),
-        child: ListView.builder(
-          controller: _projectScrollController,
-          scrollDirection: Axis.horizontal,
-          itemCount: _projects.length,
-          itemBuilder: (context, index) {
-            final project = _projects[index];
-            final isSelected = index == _selectedProjectIndex;
-            
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              margin: EdgeInsets.only(
-                right: 16,
-                top: isSelected ? 0 : 10,
-                bottom: isSelected ? 10 : 0,
-              ),
-              width: 200,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    _projectScrollController.animateTo(
-                      index * 216.0,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOutCubic,
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  splashColor: project['color'].withOpacity(0.1),
-                  highlightColor: project['color'].withOpacity(0.05),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isSelected 
-                          ? project['color'].withOpacity(0.15) 
-                          : Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
-                      // Removed the box shadow (glow effect)
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            // Folder icon
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: project['color'].withOpacity(isSelected ? 0.3 : 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.folder_outlined,
-                                color: project['color'],
-                                size: 20,
-                              ),
-                            ),
-                            const Spacer(),
-                            // Task count badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.task_alt,
-                                    color: project['color'],
-                                    size: 12,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${project['completed']}/${project['tasks']}',
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        // Project name
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              project['name'],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.3,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (isSelected)
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (notification) {
+            // When scrolling ends, check if we need to trigger haptic
+            if (notification is ScrollEndNotification) {
+              if (_isScrolling) {
+                _isScrolling = false;
+                
+                // Only trigger haptic if we've settled on a new index
+                if (_lastSelectedIndex != _selectedProjectIndex) {
+                  _lastSelectedIndex = _selectedProjectIndex;
+                  _triggerSubtleHaptic();
+                }
+              }
+            }
+            return false;
+          },
+          child: ListView.builder(
+            controller: _projectScrollController,
+            scrollDirection: Axis.horizontal,
+            itemCount: _projects.length,
+            itemBuilder: (context, index) {
+              final project = _projects[index];
+              final isSelected = index == _selectedProjectIndex;
+              
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                margin: EdgeInsets.only(
+                  right: 16,
+                  top: isSelected ? 0 : 10,
+                  bottom: isSelected ? 10 : 0,
+                ),
+                width: 200,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      // Scroll to this item when tapped
+                      _projectScrollController.animateTo(
+                        index * 216.0,
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeOutCubic,
+                      );
+                      
+                      // No haptic on tap - will be triggered when scrolling settles
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    splashColor: project['color'].withOpacity(0.1),
+                    highlightColor: project['color'].withOpacity(0.05),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: isSelected 
+                            ? project['color'].withOpacity(0.15) 
+                            : Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              // Folder icon
                               Container(
-                                margin: const EdgeInsets.only(top: 4),
-                                height: 2,
-                                width: 40,
+                                padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
+                                  color: project['color'].withOpacity(isSelected ? 0.3 : 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  Icons.folder_outlined,
                                   color: project['color'],
-                                  borderRadius: BorderRadius.circular(1),
+                                  size: 20,
                                 ),
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        // Progress bar
-                        Stack(
-                          children: [
-                            // Background track
-                            Container(
-                              height: 4,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(2),
+                              const Spacer(),
+                              // Task count badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.task_alt,
+                                      color: project['color'],
+                                      size: 12,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '${project['completed']}/${project['tasks']}',
+                                      style: TextStyle(
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            // Progress
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 500),
-                              curve: Curves.easeOutCubic,
-                              height: 4,
-                              width: (project['progress'] * 168),
-                              decoration: BoxDecoration(
-                                color: project['color'],
-                                borderRadius: BorderRadius.circular(2),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // Project name
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                project['name'],
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // Percentage and due date
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${(project['progress'] * 100).toInt()}% completed',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.7),
-                                fontSize: 11,
+                              if (isSelected)
+                                Container(
+                                  margin: const EdgeInsets.only(top: 4),
+                                  height: 2,
+                                  width: 40,
+                                  decoration: BoxDecoration(
+                                    color: project['color'],
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          // Progress bar
+                          Stack(
+                            children: [
+                              // Background track
+                              Container(
+                                height: 4,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
                               ),
-                            ),
-                            // Due date
-                            Text(
-                              'Due Oct 15',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 10,
+                              // Progress
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 500),
+                                curve: Curves.easeOutCubic,
+                                height: 4,
+                                width: (project['progress'] * 168),
+                                decoration: BoxDecoration(
+                                  color: project['color'],
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          // Percentage and due date
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                '${(project['progress'] * 100).toInt()}% completed',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.7),
+                                  fontSize: 11,
+                                ),
+                              ),
+                              // Due date
+                              Text(
+                                'Due Oct 15',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.5),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
