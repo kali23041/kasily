@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart'; // Import for haptic feedback
+import 'dart:math' as math;
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -10,7 +11,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   double _completionPercentage = 0.68;
   int _selectedProjectIndex = 0;
   int _selectedTabIndex = 0;
@@ -19,6 +20,10 @@ class _HomePageState extends State<HomePage> {
   late ScrollController _projectScrollController;
   bool _isScrolling = false;
   int _lastSelectedIndex = 0;
+  
+  // Add animation controller for progress
+  late AnimationController _progressAnimationController;
+  late Animation<double> _progressAnimation;
   
   final List<Map<String, dynamic>> _projects = [
     {
@@ -118,6 +123,23 @@ class _HomePageState extends State<HomePage> {
     
     // Add a listener to detect scroll changes
     _projectScrollController.addListener(_onProjectScroll);
+    
+    // Initialize progress animation controller
+    _progressAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    
+    _progressAnimation = Tween<double>(
+      begin: 0.0,
+      end: _completionPercentage,
+    ).animate(CurvedAnimation(
+      parent: _progressAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+    
+    // Start the initial animation
+    _progressAnimationController.forward();
   }
   
   @override
@@ -125,6 +147,7 @@ class _HomePageState extends State<HomePage> {
     // Clean up the controller
     _projectScrollController.removeListener(_onProjectScroll);
     _projectScrollController.dispose();
+    _progressAnimationController.dispose();
     super.dispose();
   }
   
@@ -143,11 +166,26 @@ class _HomePageState extends State<HomePage> {
     if (index >= 0 && index < _projects.length) {
       // Only update if the index has changed
       if (index != _selectedProjectIndex) {
+        final newProgress = _projects[index]['progress'];
+        
+        // Animate to the new progress value
+        _progressAnimation = Tween<double>(
+          begin: _progressAnimation.value,
+          end: newProgress,
+        ).animate(CurvedAnimation(
+          parent: _progressAnimationController,
+          curve: Curves.easeOutCubic,
+        ));
+        
         setState(() {
           _selectedProjectIndex = index;
-          _completionPercentage = _projects[index]['progress'];
+          _completionPercentage = newProgress;
           _isScrolling = true;
         });
+        
+        // Reset and start the animation
+        _progressAnimationController.reset();
+        _progressAnimationController.forward();
       }
     }
     
@@ -1172,5 +1210,73 @@ class _HomePageState extends State<HomePage> {
       default:
         return const Color(0xFF7F5AF0);
     }
+  }
+}
+
+// Custom painter for the progress arc
+class ProgressArcPainter extends CustomPainter {
+  final double progress;
+  final Color color;
+  final double strokeWidth;
+  
+  ProgressArcPainter({
+    required this.progress,
+    required this.color,
+    required this.strokeWidth,
+  });
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - strokeWidth / 2;
+    
+    // Draw the progress arc
+    final progressPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    
+    // Start from the top (270 degrees) and go clockwise
+    final startAngle = -math.pi / 2;
+    final sweepAngle = 2 * math.pi * progress;
+    
+    // Add a subtle shadow for depth
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius + 1),
+      startAngle,
+      sweepAngle,
+      false,
+      Paint()
+        ..color = color.withOpacity(0.3)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = strokeWidth + 2
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3),
+    );
+    
+    // Draw the main progress arc with a subtle shimmer effect
+    for (double i = 0; i < 3; i++) {
+      final shimmerOpacity = 0.7 - (i * 0.2);
+      final shimmerWidth = strokeWidth - (i * 0.5);
+      
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius - i * 0.5),
+        startAngle,
+        sweepAngle,
+        false,
+        Paint()
+          ..color = color.withOpacity(shimmerOpacity)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = shimmerWidth
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+  
+  @override
+  bool shouldRepaint(ProgressArcPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+           oldDelegate.color != color ||
+           oldDelegate.strokeWidth != strokeWidth;
   }
 }
