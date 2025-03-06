@@ -3,6 +3,8 @@ import 'pages/home_page.dart';
 import 'pages/calendar_page.dart';
 import 'pages/chat_page.dart';
 import 'pages/profile_page.dart';
+import 'pages/login_page.dart';
+import 'pages/signup_page.dart';
 import 'components/navbar.dart';
 
 void main() {
@@ -21,7 +23,12 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         scaffoldBackgroundColor: const Color(0xFF16161A),
       ),
-      home: const MainContainer(),
+      initialRoute: '/login',
+      routes: {
+        '/login': (context) => const LoginPage(),
+        '/signup': (context) => const SignupPage(),
+        '/home': (context) => const MainContainer(),
+      },
       debugShowCheckedModeBanner: false,
     );
   }
