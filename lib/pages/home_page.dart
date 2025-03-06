@@ -217,19 +217,6 @@ class _HomePageState extends State<HomePage> {
                         ? project['color'].withOpacity(0.15) 
                         : Colors.white.withOpacity(0.05),
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: isSelected ? [
-                      BoxShadow(
-                        color: project['color'].withOpacity(0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 5),
-                      ),
-                    ] : null,
-                    border: Border.all(
-                      color: isSelected 
-                          ? project['color'].withOpacity(0.3) 
-                          : Colors.white.withOpacity(0.05),
-                      width: 1,
-                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,15 +398,44 @@ class _HomePageState extends State<HomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Today\'s Tasks',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Today\'s Tasks',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    color: Colors.white.withOpacity(0.7),
+                    size: 14,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Sep 25, 2023',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.7),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
@@ -427,88 +443,314 @@ class _HomePageState extends State<HomePage> {
           itemBuilder: (context, index) {
             final task = _tasks[index];
             
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: ListTile(
-                dense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                leading: Checkbox(
-                  value: task['isCompleted'],
-                  onChanged: (value) {
-                    setState(() {
-                      _tasks[index]['isCompleted'] = value;
-                    });
-                  },
-                  fillColor: WidgetStateProperty.resolveWith<Color>(
-                    (Set<WidgetState> states) {
-                      if (states.contains(WidgetState.selected)) {
-                        return _projects[_selectedProjectIndex]['color'];
-                      }
-                      return Colors.white.withOpacity(0.2);
+            return AnimatedOpacity(
+              duration: Duration(milliseconds: 500 + (index * 100)),
+              opacity: 1.0,
+              curve: Curves.easeInOut,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                transform: Matrix4.translationValues(0, 0, 0)
+                  ..scale(task['isCompleted'] ? 0.98 : 1.0),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: task['isCompleted']
+                      ? Colors.white.withOpacity(0.03)
+                      : Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        task['isCompleted'] = !task['isCompleted'];
+                      });
                     },
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                title: Text(
-                  task['title'],
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    decoration: task['isCompleted'] 
-                        ? TextDecoration.lineThrough 
-                        : TextDecoration.none,
-                  ),
-                ),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6, 
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getPriorityColor(task['priority']).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          task['priority'],
-                          style: TextStyle(
-                            color: _getPriorityColor(task['priority']),
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                    borderRadius: BorderRadius.circular(12),
+                    splashColor: _getPriorityColor(task['priority']).withOpacity(0.1),
+                    highlightColor: _getPriorityColor(task['priority']).withOpacity(0.05),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          // Animated checkbox without border
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeOutCubic,
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: task['isCompleted']
+                                  ? _projects[_selectedProjectIndex]['color']
+                                  : Colors.white.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Center(
+                              child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 200),
+                                opacity: task['isCompleted'] ? 1.0 : 0.0,
+                                child: const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 16,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 12),
+                          
+                          // Task details
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    // Task title with strike-through animation
+                                    Expanded(
+                                      child: AnimatedDefaultTextStyle(
+                                        duration: const Duration(milliseconds: 300),
+                                        style: TextStyle(
+                                          color: task['isCompleted']
+                                              ? Colors.white.withOpacity(0.5)
+                                              : Colors.white,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                          decoration: task['isCompleted']
+                                              ? TextDecoration.lineThrough
+                                              : TextDecoration.none,
+                                          decorationColor: Colors.white.withOpacity(0.5),
+                                          decorationThickness: 2,
+                                        ),
+                                        child: Text(
+                                          task['title'],
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                                    
+                                    // Due time with animated color
+                                    AnimatedDefaultTextStyle(
+                                      duration: const Duration(milliseconds: 300),
+                                      style: TextStyle(
+                                        color: _isTaskOverdue(task['dueDate'])
+                                            ? const Color(0xFFF25F4C)
+                                            : Colors.white.withOpacity(0.5),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      child: Text(task['dueDate']),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                
+                                // Task metadata
+                                Row(
+                                  children: [
+                                    // Priority tag without border
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _getPriorityColor(task['priority']).withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            _getPriorityIcon(task['priority']),
+                                            color: _getPriorityColor(task['priority']),
+                                            size: 10,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            task['priority'],
+                                            style: TextStyle(
+                                              color: _getPriorityColor(task['priority']),
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    
+                                    // Project tag without border
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: _projects[_selectedProjectIndex]['color'].withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.folder_outlined,
+                                            color: _projects[_selectedProjectIndex]['color'],
+                                            size: 10,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _projects[_selectedProjectIndex]['name'],
+                                            style: TextStyle(
+                                              color: _projects[_selectedProjectIndex]['color'],
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          
+                          // More options button
+                          Material(
+                            color: Colors.transparent,
+                            shape: const CircleBorder(),
+                            clipBehavior: Clip.antiAlias,
+                            child: IconButton(
+                              icon: Icon(
+                                Icons.more_vert,
+                                color: Colors.white.withOpacity(0.5),
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                _showTaskOptions(context, index);
+                              },
+                              splashColor: _getPriorityColor(task['priority']).withOpacity(0.1),
+                              highlightColor: _getPriorityColor(task['priority']).withOpacity(0.05),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        task['dueDate'],
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                trailing: Icon(
-                  Icons.more_vert,
-                  color: Colors.white.withOpacity(0.7),
-                  size: 16,
                 ),
               ),
             );
           },
         ),
+        
+        // Add task button without border
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () {
+                // Add new task functionality
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add_circle_outline,
+                      color: _projects[_selectedProjectIndex]['color'],
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Add New Task',
+                      style: TextStyle(
+                        color: _projects[_selectedProjectIndex]['color'],
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  // Helper method to determine if a task is overdue
+  bool _isTaskOverdue(String dueDate) {
+    return dueDate == 'Today' || dueDate == 'Yesterday';
+  }
+
+  // Helper method to get priority icon
+  IconData _getPriorityIcon(String priority) {
+    switch (priority) {
+      case 'High':
+        return Icons.priority_high;
+      case 'Medium':
+        return Icons.remove;
+      case 'Low':
+        return Icons.arrow_downward;
+      default:
+        return Icons.circle;
+    }
+  }
+
+  // Show task options bottom sheet
+  void _showTaskOptions(BuildContext context, int index) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1F1F28),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildTaskOption(Icons.edit_outlined, 'Edit Task', Colors.blue),
+              _buildTaskOption(Icons.calendar_today_outlined, 'Reschedule', Colors.orange),
+              _buildTaskOption(Icons.delete_outline, 'Delete Task', Colors.red),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper method to build task option
+  Widget _buildTaskOption(IconData icon, String label, Color color) {
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: color,
+      ),
+      title: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+        ),
+      ),
+      onTap: () {
+        Navigator.pop(context);
+      },
     );
   }
 
