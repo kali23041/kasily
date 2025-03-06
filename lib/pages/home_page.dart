@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'dart:ui';
 import 'package:flutter/services.dart'; // Import for haptic feedback
 import 'dart:math' as math;
+import 'create_project_page.dart'; // Corrected import
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -210,34 +211,48 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Scaffold(
+      backgroundColor: const Color(0xFF16161A),
+      body: SafeArea(
+        child: Stack(
           children: [
-            // Header with user info
-            _buildHeader(),
+            SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header with user info
+                  _buildHeader(),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Project progress cards
+                  _buildProjectsCarousel(),
+                  
+                  const SizedBox(height: 20),
+                  
+                  // Tab bar for different sections
+                  _buildTabBar(),
+                  
+                  const SizedBox(height: 16),
+                  
+                  // Tab content based on selected tab
+                  if (_selectedTabIndex == 0)
+                    _buildTasksSection()
+                  else if (_selectedTabIndex == 1)
+                    _buildAnalyticsSection()
+                  else
+                    _buildTeamSection(),
+                ],
+              ),
+            ),
             
-            const SizedBox(height: 20),
-            
-            // Project progress cards
-            _buildProjectsCarousel(),
-            
-            const SizedBox(height: 20),
-            
-            // Tab bar for different sections
-            _buildTabBar(),
-            
-            const SizedBox(height: 16),
-            
-            // Tab content based on selected tab
-            if (_selectedTabIndex == 0)
-              _buildTasksSection()
-            else if (_selectedTabIndex == 1)
-              _buildAnalyticsSection()
-            else
-              _buildTeamSection(),
+            // Add project button
+            Positioned(
+              right: 16,
+              bottom: 80, // Position above the navbar
+              child: _buildAddProjectButton(),
+            ),
           ],
         ),
       ),
@@ -313,8 +328,65 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
           child: ListView.builder(
             controller: _projectScrollController,
             scrollDirection: Axis.horizontal,
-            itemCount: _projects.length,
+            itemCount: _projects.length + 1, // +1 for the "Add Project" card
             itemBuilder: (context, index) {
+              // Add Project card
+              if (index == _projects.length) {
+                return GestureDetector(
+                  onTap: () async {
+                    HapticFeedback.selectionClick();
+                    final newProject = await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const CreateProjectPage()),
+                    );
+                    
+                    if (newProject != null) {
+                      _addNewProject(newProject);
+                    }
+                  },
+                  child: Container(
+                    width: 200,
+                    margin: const EdgeInsets.only(right: 16, top: 10, bottom: 0),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF7F5AF0).withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.add,
+                            color: Color(0xFF7F5AF0),
+                            size: 24,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Add New Project',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              
+              // Regular project cards
               final project = _projects[index];
               final isSelected = index == _selectedProjectIndex;
               
@@ -1210,6 +1282,76 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       default:
         return const Color(0xFF7F5AF0);
     }
+  }
+
+  Widget _buildAddProjectButton() {
+    return GestureDetector(
+      onTap: () async {
+        HapticFeedback.mediumImpact();
+        final newProject = await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CreateProjectPage()),
+        );
+        
+        if (newProject != null) {
+          _addNewProject(newProject);
+        }
+      },
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: const Color(0xFF7F5AF0),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF7F5AF0).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Icon(
+          Icons.add,
+          color: Colors.white,
+          size: 28,
+        ),
+      ),
+    );
+  }
+
+  void _addNewProject(Map<String, dynamic> project) {
+    setState(() {
+      _projects.add(project);
+      
+      // Select the newly added project
+      _selectedProjectIndex = _projects.length - 1;
+      _completionPercentage = project['progress'];
+      
+      // Animate to the new project
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_projectScrollController.hasClients) {
+          _projectScrollController.animateTo(
+            (_projects.length - 1) * 216.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      });
+      
+      // Update the progress animation
+      _progressAnimation = Tween<double>(
+        begin: 0.0,
+        end: project['progress'],
+      ).animate(CurvedAnimation(
+        parent: _progressAnimationController,
+        curve: Curves.easeOutCubic,
+      ));
+      
+      // Reset and start the animation
+      _progressAnimationController.reset();
+      _progressAnimationController.forward();
+    });
   }
 }
 
