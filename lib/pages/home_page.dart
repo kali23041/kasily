@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'dart:ui';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({Key? key}) : super(key: key);
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -102,52 +104,36 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF16161A),
-      extendBody: true,
-      body: Stack(
-        children: [
-          // Main content with full page scroll
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header with user info
-                  _buildHeader(),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Project progress cards
-                  _buildProjectsCarousel(),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // Tab bar for different sections
-                  _buildTabBar(),
-                  
-                  const SizedBox(height: 16),
-                  
-                  // Tab content based on selected tab
-                  _selectedTabIndex == 0
-                      ? _buildTasksSection()
-                      : _selectedTabIndex == 1
-                          ? _buildAnalyticsSection()
-                          : _buildTeamSection(),
-                ],
-              ),
-            ),
-          ),
-          
-          // Bottom navbar
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Navbar(),
-          ),
-        ],
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with user info
+            _buildHeader(),
+            
+            const SizedBox(height: 20),
+            
+            // Project progress cards
+            _buildProjectsCarousel(),
+            
+            const SizedBox(height: 20),
+            
+            // Tab bar for different sections
+            _buildTabBar(),
+            
+            const SizedBox(height: 16),
+            
+            // Tab content based on selected tab
+            if (_selectedTabIndex == 0)
+              _buildTasksSection()
+            else if (_selectedTabIndex == 1)
+              _buildAnalyticsSection()
+            else
+              _buildTeamSection(),
+          ],
+        ),
       ),
     );
   }
@@ -203,98 +189,243 @@ class _HomePageState extends State<HomePage> {
           final project = _projects[index];
           final isSelected = index == _selectedProjectIndex;
           
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedProjectIndex = index;
-                _completionPercentage = project['progress'];
-              });
+          return TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: Duration(milliseconds: 300 + (index * 100)),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, child) {
+              return Transform.translate(
+                offset: Offset(20 * (1 - value), 0),
+                child: Opacity(
+                  opacity: value,
+                  child: child,
+                ),
+              );
             },
-            child: Container(
-              margin: const EdgeInsets.only(right: 16),
-              width: 200,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isSelected 
-                    ? project['color'].withOpacity(0.15) 
-                    : Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: project['color'].withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.folder_outlined,
-                          color: project['color'],
-                          size: 20,
-                        ),
-                      ),
-                      const Spacer(),
-                      Icon(
-                        Icons.more_vert,
-                        color: Colors.white.withOpacity(0.7),
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    project['name'],
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedProjectIndex = index;
+                  _completionPercentage = project['progress'];
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                margin: EdgeInsets.only(
+                  right: 16,
+                  top: isSelected ? 0 : 10,
+                  bottom: isSelected ? 10 : 0,
+                ),
+                width: 200,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: isSelected 
+                      ? project['color'].withOpacity(0.15) 
+                      : Colors.white.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isSelected ? [
+                    BoxShadow(
+                      color: project['color'].withOpacity(0.2),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  ] : null,
+                  border: Border.all(
+                    color: isSelected 
+                        ? project['color'].withOpacity(0.3) 
+                        : Colors.white.withOpacity(0.05),
+                    width: 1,
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${project['completed']}/${project['tasks']} tasks',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Stack(
-                    children: [
-                      Container(
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      FractionallySizedBox(
-                        widthFactor: project['progress'],
-                        child: Container(
-                          height: 4,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        // Animated folder icon
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: project['color'],
-                            borderRadius: BorderRadius.circular(2),
+                            color: project['color'].withOpacity(isSelected ? 0.3 : 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: isSelected ? [
+                              BoxShadow(
+                                color: project['color'].withOpacity(0.2),
+                                blurRadius: 5,
+                                spreadRadius: 1,
+                              ),
+                            ] : null,
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Subtle pulsing effect for selected card
+                              if (isSelected)
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween<double>(begin: 0.8, end: 1.2),
+                                  duration: const Duration(milliseconds: 1500),
+                                  curve: Curves.easeInOut,
+                                  builder: (context, value, child) {
+                                    return Opacity(
+                                      opacity: 2 - value,
+                                      child: Transform.scale(
+                                        scale: value,
+                                        child: Container(
+                                          width: 24,
+                                          height: 24,
+                                          decoration: BoxDecoration(
+                                            color: project['color'].withOpacity(0.1),
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              Icon(
+                                Icons.folder_outlined,
+                                color: project['color'],
+                                size: 20,
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${(project['progress'] * 100).toInt()}% completed',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
-                      fontSize: 11,
+                        const Spacer(),
+                        // Task count badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.task_alt,
+                                color: project['color'],
+                                size: 12,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${project['completed']}/${project['tasks']}',
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.9),
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    // Project name with animated underline for selected card
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          project['name'],
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (isSelected)
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            margin: const EdgeInsets.only(top: 4),
+                            height: 2,
+                            width: 40,
+                            decoration: BoxDecoration(
+                              color: project['color'],
+                              borderRadius: BorderRadius.circular(1),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    // Animated progress bar
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Stack(
+                          children: [
+                            // Background track
+                            Container(
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                            // Animated progress
+                            TweenAnimationBuilder<double>(
+                              tween: Tween<double>(begin: 0.0, end: project['progress']),
+                              duration: const Duration(milliseconds: 1000),
+                              curve: Curves.easeOutCubic,
+                              builder: (context, value, child) {
+                                return FractionallySizedBox(
+                                  widthFactor: value,
+                                  child: Container(
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: project['color'],
+                                      borderRadius: BorderRadius.circular(2),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: project['color'].withOpacity(0.5),
+                                          blurRadius: isSelected ? 4 : 0,
+                                          spreadRadius: isSelected ? 1 : 0,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Percentage text with animated counting effect
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: project['progress'] * 100),
+                          duration: const Duration(milliseconds: 1000),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, value, child) {
+                            return Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${value.toInt()}% completed',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.7),
+                                    fontSize: 11,
+                                  ),
+                                ),
+                                // Due date
+                                Text(
+                                  'Due Oct 15',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.5),
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -380,9 +511,9 @@ class _HomePageState extends State<HomePage> {
                       _tasks[index]['isCompleted'] = value;
                     });
                   },
-                  fillColor: MaterialStateProperty.resolveWith<Color>(
-                    (Set<MaterialState> states) {
-                      if (states.contains(MaterialState.selected)) {
+                  fillColor: WidgetStateProperty.resolveWith<Color>(
+                    (Set<WidgetState> states) {
+                      if (states.contains(WidgetState.selected)) {
                         return _projects[_selectedProjectIndex]['color'];
                       }
                       return Colors.white.withOpacity(0.2);
@@ -772,73 +903,3 @@ class _HomePageState extends State<HomePage> {
     }
   }
 }
-
-class Navbar extends StatefulWidget {
-  const Navbar({super.key});
-
-  @override
-  State<Navbar> createState() => _NavbarState();
-}
-
-class _NavbarState extends State<Navbar> {
-  int _selectedIndex = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16.0),
-      height: 70,
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildNavItem(0, Icons.home_outlined, Icons.home, 'Home'),
-          _buildNavItem(1, Icons.calendar_today_outlined, Icons.calendar_today, 'Calendar'),
-          _buildNavItem(2, Icons.chat_bubble_outline, Icons.chat_bubble, 'Chat'),
-          _buildNavItem(3, Icons.person_outline, Icons.person, 'Profile'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, IconData activeIcon, String label) {
-    final isSelected = _selectedIndex == index;
-    
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF7F5AF0).withOpacity(0.2) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isSelected ? activeIcon : icon,
-              color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? Colors.white : Colors.white.withOpacity(0.6),
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-} 

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'pages/home_page.dart';
+import 'pages/calendar_page.dart';
+import 'pages/chat_page.dart';
+import 'pages/profile_page.dart';
 import 'components/navbar.dart';
 
 void main() {
@@ -7,36 +10,70 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({Key? key}) : super(key: key);
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Task Manager',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7F5AF0)),
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF16161A),
       ),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const HomePage(),
-      },
+      home: const MainContainer(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class MainContainer extends StatefulWidget {
+  const MainContainer({Key? key}) : super(key: key);
+
+  @override
+  State<MainContainer> createState() => _MainContainerState();
+}
+
+class _MainContainerState extends State<MainContainer> {
+  int _selectedIndex = 0;
+  
+  // Keep instances of all pages to preserve their state
+  final List<Widget> _pages = [
+    const HomePage(),
+    const CalendarPage(),
+    const ChatPage(),
+    const ProfilePage(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF16161A),
+      extendBody: true,
+      body: Stack(
+        children: [
+          // Page content with IndexedStack to preserve state
+          IndexedStack(
+            index: _selectedIndex,
+            children: _pages,
+          ),
+          
+          // Bottom navbar
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Navbar(
+              selectedIndex: _selectedIndex,
+              onItemSelected: (index) {
+                setState(() {
+                  _selectedIndex = index;
+                });
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
