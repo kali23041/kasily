@@ -14,6 +14,9 @@ class _HomePageState extends State<HomePage> {
   int _selectedProjectIndex = 0;
   int _selectedTabIndex = 0;
   
+  // Add a ScrollController for the project carousel
+  late ScrollController _projectScrollController;
+  
   final List<Map<String, dynamic>> _projects = [
     {
       'name': 'Mobile App Redesign',
@@ -103,6 +106,45 @@ class _HomePageState extends State<HomePage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    
+    // Initialize the scroll controller
+    _projectScrollController = ScrollController();
+    
+    // Add a listener to detect scroll changes
+    _projectScrollController.addListener(_onProjectScroll);
+  }
+  
+  @override
+  void dispose() {
+    // Clean up the controller
+    _projectScrollController.removeListener(_onProjectScroll);
+    _projectScrollController.dispose();
+    super.dispose();
+  }
+  
+  // This method will be called whenever the project carousel scrolls
+  void _onProjectScroll() {
+    if (!_projectScrollController.hasClients) return;
+    
+    // Calculate which project card is most visible
+    final double offset = _projectScrollController.offset;
+    final double itemWidth = 216; // 200 (card width) + 16 (right margin)
+    
+    // Calculate the index of the centered card
+    final int index = (offset / itemWidth).round();
+    
+    // Ensure the index is within bounds
+    if (index >= 0 && index < _projects.length && index != _selectedProjectIndex) {
+      setState(() {
+        _selectedProjectIndex = index;
+        _completionPercentage = _projects[index]['progress'];
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: SingleChildScrollView(
@@ -182,173 +224,183 @@ class _HomePageState extends State<HomePage> {
   Widget _buildProjectsCarousel() {
     return SizedBox(
       height: 190,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _projects.length,
-        itemBuilder: (context, index) {
-          final project = _projects[index];
-          final isSelected = index == _selectedProjectIndex;
-          
-          return AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOutCubic,
-            margin: EdgeInsets.only(
-              right: 16,
-              top: isSelected ? 0 : 10,
-              bottom: isSelected ? 10 : 0,
-            ),
-            width: 200,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _selectedProjectIndex = index;
-                    _completionPercentage = project['progress'];
-                  });
-                },
-                borderRadius: BorderRadius.circular(16),
-                splashColor: project['color'].withOpacity(0.1),
-                highlightColor: project['color'].withOpacity(0.05),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isSelected 
-                        ? project['color'].withOpacity(0.15) 
-                        : Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          // Folder icon
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: project['color'].withOpacity(isSelected ? 0.3 : 0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.folder_outlined,
-                              color: project['color'],
-                              size: 20,
-                            ),
-                          ),
-                          const Spacer(),
-                          // Task count badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.task_alt,
-                                  color: project['color'],
-                                  size: 12,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  '${project['completed']}/${project['tasks']}',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.9),
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Project name
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            project['name'],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 0.3,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (isSelected)
+      child: ScrollConfiguration(
+        // Remove the glow effect
+        behavior: ScrollConfiguration.of(context).copyWith(
+          overscroll: false,  // Disables the glow effect
+          physics: const BouncingScrollPhysics(),  // Optional: use bouncing physics instead
+        ),
+        child: ListView.builder(
+          controller: _projectScrollController,
+          scrollDirection: Axis.horizontal,
+          itemCount: _projects.length,
+          itemBuilder: (context, index) {
+            final project = _projects[index];
+            final isSelected = index == _selectedProjectIndex;
+            
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              margin: EdgeInsets.only(
+                right: 16,
+                top: isSelected ? 0 : 10,
+                bottom: isSelected ? 10 : 0,
+              ),
+              width: 200,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    _projectScrollController.animateTo(
+                      index * 216.0,
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOutCubic,
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  splashColor: project['color'].withOpacity(0.1),
+                  highlightColor: project['color'].withOpacity(0.05),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isSelected 
+                          ? project['color'].withOpacity(0.15) 
+                          : Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      // Removed the box shadow (glow effect)
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            // Folder icon
                             Container(
-                              margin: const EdgeInsets.only(top: 4),
-                              height: 2,
-                              width: 40,
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
+                                color: project['color'].withOpacity(isSelected ? 0.3 : 0.2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.folder_outlined,
                                 color: project['color'],
-                                borderRadius: BorderRadius.circular(1),
+                                size: 20,
                               ),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Progress bar
-                      Stack(
-                        children: [
-                          // Background track
-                          Container(
-                            height: 4,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(2),
+                            const Spacer(),
+                            // Task count badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.task_alt,
+                                    color: project['color'],
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${project['completed']}/${project['tasks']}',
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                          // Progress
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 500),
-                            curve: Curves.easeOutCubic,
-                            height: 4,
-                            width: (project['progress'] * 168),
-                            decoration: BoxDecoration(
-                              color: project['color'],
-                              borderRadius: BorderRadius.circular(2),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // Project name
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              project['name'],
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.3,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Percentage and due date
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${(project['progress'] * 100).toInt()}% completed',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.7),
-                              fontSize: 11,
+                            if (isSelected)
+                              Container(
+                                margin: const EdgeInsets.only(top: 4),
+                                height: 2,
+                                width: 40,
+                                decoration: BoxDecoration(
+                                  color: project['color'],
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // Progress bar
+                        Stack(
+                          children: [
+                            // Background track
+                            Container(
+                              height: 4,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
-                          ),
-                          // Due date
-                          Text(
-                            'Due Oct 15',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.5),
-                              fontSize: 10,
+                            // Progress
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 500),
+                              curve: Curves.easeOutCubic,
+                              height: 4,
+                              width: (project['progress'] * 168),
+                              decoration: BoxDecoration(
+                                color: project['color'],
+                                borderRadius: BorderRadius.circular(2),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Percentage and due date
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${(project['progress'] * 100).toInt()}% completed',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 11,
+                              ),
+                            ),
+                            // Due date
+                            Text(
+                              'Due Oct 15',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
